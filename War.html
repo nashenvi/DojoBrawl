@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"> 
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +9,7 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background-color: #0b3d91;
+      background-color: #999;
       color: white;
     }
     .card {
@@ -59,10 +59,6 @@
   </div>
 
   <script>
-    peer.on('error', err => {
-  console.error('PeerJS error:', err);
-  alert('PeerJS connection failed: ' + err.type);
-});
     const suits = ['♠', '♥', '♦', '♣'];
     const values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K', 'A'];
     let deck = [];
@@ -71,10 +67,20 @@
     let conn;
     let isHost = false;
     let isYourTurn = false;
-    let totalRounds = 26; // Half deck per player
+    let totalRounds = 26;
 
     let yourScore = 0;
     let opponentScore = 0;
+
+    peer.on('open', id => {
+      console.log('PeerJS connection open, ID:', id);
+      document.getElementById('yourId').textContent = `Your ID: ${id}`;
+    });
+
+    peer.on('error', err => {
+      console.error('PeerJS error:', err);
+      alert('PeerJS connection failed: ' + err.type);
+    });
 
     function shuffleDeck() {
       deck = [];
@@ -105,11 +111,7 @@
       isHost = true;
       isYourTurn = true;
       shuffleDeck();
-      peer.on('open', id => {
-        document.getElementById('yourId').textContent = `Your ID: ${id}`;
-        document.getElementById('status').textContent = 'Waiting for a player to join...';
-      });
-
+      document.getElementById('status').textContent = 'Waiting for a player to join...';
       peer.on('connection', connection => {
         conn = connection;
         conn.on('data', handleData);
@@ -135,7 +137,6 @@
         alert('Not your turn or not connected!');
         return;
       }
-
       const yourCard = drawCardFromDeck();
       document.getElementById('yourCard').textContent = yourCard.value + yourCard.suit;
       conn.send({ type: 'card', card: yourCard });
@@ -152,13 +153,12 @@
     function handleData(data) {
       if (data.type === 'deck') {
         deck = data.deck;
-        shuffleDeck(); // Shuffle again for fairness
+        shuffleDeck();
         isYourTurn = false;
         updateTurnDisplay();
       } else if (data.type === 'card') {
         document.getElementById('opponentCard').textContent = data.card.value + data.card.suit;
         localState.opponentCard = data.card;
-
         if (localState.yourCard) {
           evaluateRound(localState.yourCard, data.card);
           localState.yourCard = null;
@@ -177,7 +177,6 @@
     function evaluateRound(card1, card2) {
       const val1 = getCardValue(card1.value);
       const val2 = getCardValue(card2.value);
-
       if (val1 > val2) {
         yourScore++;
         document.getElementById('result').textContent = 'You win the round!';
@@ -187,7 +186,6 @@
       } else {
         document.getElementById('result').textContent = "It's a tie!";
       }
-
       document.getElementById('score').textContent = `Score - You: ${yourScore} | Opponent: ${opponentScore}`;
     }
 

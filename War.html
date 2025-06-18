@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multiplayer War Card Game</title>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #0b3d91;
+      color: white;
+    }
+    .card {
+      display: inline-block;
+      width: 100px;
+      height: 150px;
+      background-color: white;
+      color: black;
+      margin: 10px;
+      line-height: 150px;
+      font-size: 2em;
+      border-radius: 10px;
+      border: 2px solid #333;
+    }
+    .button {
+      padding: 10px 20px;
+      font-size: 1.2em;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #connection {
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Multiplayer War Card Game</h1>
+  <div id="connection">
+    <button onclick="startHost()" class="button">Host Game</button>
+    <button onclick="startJoin()" class="button">Join Game</button><br>
+    <input type="text" id="peerIdInput" placeholder="Enter Host ID to Join" style="margin-top:10px; padding:5px;" />
+    <p id="yourId"></p>
+    <p id="status"></p>
+  </div>
+  <div id="game" style="display:none;">
+    <div>
+      <h2>You</h2>
+      <div id="yourCard" class="card"></div>
+    </div>
+    <div>
+      <h2>Opponent</h2>
+      <div id="opponentCard" class="card"></div>
+    </div>
+    <button id="playBtn" class="button" onclick="playRound()">Play Round</button>
+    <h2 id="result"></h2>
+    <h3 id="score"></h3>
+  </div>
+
+  <script>
+    const suits = ['♠', '♥', '♦', '♣'];
+    const values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K', 'A'];
+    let deck = [];
+
+    const peer = new Peer();
+    let conn;
+    let isHost = false;
+    let isYourTurn = false;
+    let totalRounds = 26; // Half deck per player
+
+    let yourScore = 0;
+    let opponentScore = 0;
+
+    function shuffleDeck() {
+      deck = [];
+      for (const suit of suits) {
+        for (const val of values) {
+          deck.push({ suit, value: val });
+        }
+      }
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+    }
+
+    function getCardValue(val) {
+      if (val === 'J') return 11;
+      if (val === 'Q') return 12;
+      if (val === 'K') return 13;
+      if (val === 'A') return 14;
+      return val;
+    }
+
+    function drawCardFromDeck() {
+      return deck.pop();
+    }
+
+    function startHost() {
+      isHost = true;
+      isYourTurn = true;
+      shuffleDeck();
+      peer.on('open', id => {
+        document.getElementById('yourId').textContent = `Your ID: ${id}`;
+        document.getElementById('status').textContent = 'Waiting for a player to join...';
+      });
+
+      peer.on('connection', connection => {
+        conn = connection;
+        conn.on('data', handleData);
+        document.getElementById('status').textContent = 'Player connected!';
+        document.getElementById('game').style.display = 'block';
+        conn.send({ type: 'deck', deck });
+        updateTurnDisplay();
+      });
+    }
+
+    function startJoin() {
+      const hostId = document.getElementById('peerIdInput').value;
+      conn = peer.connect(hostId);
+      conn.on('open', () => {
+        document.getElementById('status').textContent = 'Connected to host!';
+        document.getElementById('game').style.display = 'block';
+      });
+      conn.on('data', handleData);
+    }
+
+    function playRound() {
+      if (!isYourTurn || !conn || conn.open === false) {
+        alert('Not your turn or not connected!');
+        return;
+      }
+
+      const yourCard = drawCardFromDeck();
+      document.getElementById('yourCard').textContent = yourCard.value + yourCard.suit;
+      conn.send({ type: 'card', card: yourCard });
+      localState.yourCard = yourCard;
+      isYourTurn = false;
+      updateTurnDisplay();
+    }
+
+    let localState = {
+      yourCard: null,
+      opponentCard: null
+    };
+
+    function handleData(data) {
+      if (data.type === 'deck') {
+        deck = data.deck;
+        shuffleDeck(); // Shuffle again for fairness
+        isYourTurn = false;
+        updateTurnDisplay();
+      } else if (data.type === 'card') {
+        document.getElementById('opponentCard').textContent = data.card.value + data.card.suit;
+        localState.opponentCard = data.card;
+
+        if (localState.yourCard) {
+          evaluateRound(localState.yourCard, data.card);
+          localState.yourCard = null;
+          localState.opponentCard = null;
+          totalRounds--;
+          if (totalRounds === 0) {
+            endGame();
+          } else {
+            isYourTurn = true;
+            updateTurnDisplay();
+          }
+        }
+      }
+    }
+
+    function evaluateRound(card1, card2) {
+      const val1 = getCardValue(card1.value);
+      const val2 = getCardValue(card2.value);
+
+      if (val1 > val2) {
+        yourScore++;
+        document.getElementById('result').textContent = 'You win the round!';
+      } else if (val2 > val1) {
+        opponentScore++;
+        document.getElementById('result').textContent = 'Opponent wins the round!';
+      } else {
+        document.getElementById('result').textContent = "It's a tie!";
+      }
+
+      document.getElementById('score').textContent = `Score - You: ${yourScore} | Opponent: ${opponentScore}`;
+    }
+
+    function updateTurnDisplay() {
+      const btn = document.getElementById('playBtn');
+      btn.disabled = !isYourTurn;
+      btn.textContent = isYourTurn ? 'Play Round' : 'Waiting...';
+    }
+
+    function endGame() {
+      let finalMsg;
+      if (yourScore > opponentScore) {
+        finalMsg = 'Game Over. You win!';
+      } else if (opponentScore > yourScore) {
+        finalMsg = 'Game Over. Opponent wins!';
+      } else {
+        finalMsg = "Game Over. It's a tie!";
+      }
+      document.getElementById('result').textContent = finalMsg;
+      document.getElementById('playBtn').disabled = true;
+    }
+  </script>
+</body>
+</html>

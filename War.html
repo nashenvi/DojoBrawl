@@ -145,8 +145,8 @@
       }
       const yourCard = drawCardFromDeck();
       document.getElementById('yourCard').textContent = yourCard.value + yourCard.suit;
-      conn.send({ type: 'card', card: yourCard });
       localState.yourCard = yourCard;
+      conn.send({ type: 'card', card: yourCard });
       updateTurnDisplay();
     }
 
@@ -163,12 +163,15 @@
       } else if (data.type === 'card') {
         const theirCard = data.card;
 
-        if (localState.yourCard) {
-          // If this client already played
+        // If this client hasn't played yet, treat theirCard as opponent's
+        if (!localState.yourCard) {
           localState.opponentCard = theirCard;
           document.getElementById('opponentCard').textContent = theirCard.value + theirCard.suit;
-
-          evaluateRound(localState.yourCard, localState.opponentCard);
+        } else {
+          // This client already played
+          document.getElementById('opponentCard').textContent = theirCard.value + theirCard.suit;
+          document.getElementById('yourCard').textContent = localState.yourCard.value + localState.yourCard.suit;
+          evaluateRound(localState.yourCard, theirCard);
           localState.yourCard = null;
           localState.opponentCard = null;
           totalRounds--;
@@ -178,17 +181,11 @@
           }
 
           isYourTurn = true;
-        } else {
-          // This client hasn't played yet
-          localState.opponentCard = theirCard;
-          document.getElementById('opponentCard').textContent = theirCard.value + theirCard.suit;
         }
-
         updateTurnDisplay();
       }
     }
-
-    function evaluateRound(card1, card2) {
+function evaluateRound(card1, card2) {
       const val1 = getCardValue(card1.value);
       const val2 = getCardValue(card2.value);
       if (val1 > val2) {

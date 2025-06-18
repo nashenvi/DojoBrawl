@@ -9,7 +9,7 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background-color: #888;
+      background-color: #AAA;
       color: white;
     }
     .card {
@@ -63,10 +63,12 @@
     const values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K', 'A'];
     let deck = [];
 
-    const peer = new Peer();
+    const customId = Math.random().toString(36).substring(2, 8);
+    const peer = new Peer(customId);
     let conn;
     let isHost = false;
     let isYourTurn = false;
+    let connectionReady = false;
     let totalRounds = 26;
 
     let yourScore = 0;
@@ -74,7 +76,7 @@
 
     peer.on('open', id => {
       console.log('PeerJS connection open, ID:', id);
-      document.getElementById('yourId').textContent = `Your ID: ${id}`;
+      document.getElementById('yourId').textContent = `Your ID: ${customId}`;
     });
 
     peer.on('error', err => {
@@ -114,6 +116,7 @@
       document.getElementById('status').textContent = 'Waiting for a player to join...';
       peer.on('connection', connection => {
         conn = connection;
+        connectionReady = true;
         conn.on('data', handleData);
         document.getElementById('status').textContent = 'Player connected!';
         document.getElementById('game').style.display = 'block';
@@ -126,6 +129,7 @@
       const hostId = document.getElementById('peerIdInput').value;
       conn = peer.connect(hostId);
       conn.on('open', () => {
+        connectionReady = true;
         document.getElementById('status').textContent = 'Connected to host!';
         document.getElementById('game').style.display = 'block';
         isYourTurn = false;
@@ -135,7 +139,7 @@
     }
 
     function playRound() {
-      if (!conn || conn.open === false) {
+      if (!connectionReady) {
         alert('Not connected!');
         return;
       }

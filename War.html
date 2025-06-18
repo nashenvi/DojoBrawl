@@ -9,7 +9,7 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background-color: #7AA;
+      background-color: #7A2;
       color: white;
     }
     .card {
@@ -161,6 +161,31 @@
         shuffleDeck();
         updateTurnDisplay();
       } else if (data.type === 'card') {
+        const theirCard = data.card;
+
+        // Always update opponent card visually
+        document.getElementById('opponentCard').textContent = theirCard.value + theirCard.suit;
+
+        // If this client already played, also re-show their own card
+        if (localState.yourCard) {
+          document.getElementById('yourCard').textContent = localState.yourCard.value + localState.yourCard.suit;
+          evaluateRound(localState.yourCard, theirCard);
+          localState.yourCard = null;
+          localState.opponentCard = null;
+          totalRounds--;
+
+          if (totalRounds === 0) {
+            endGame();
+          }
+
+          isYourTurn = true;
+        } else {
+          // Store opponent card to match later
+          localState.opponentCard = theirCard;
+        }
+
+        updateTurnDisplay();
+      }
         const theirCard = data.card;
 
         // If this client hasn't played yet, treat theirCard as opponent's

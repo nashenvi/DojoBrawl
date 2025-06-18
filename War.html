@@ -9,7 +9,7 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background-color: #999;
+      background-color: #888;
       color: white;
     }
     .card {
@@ -128,20 +128,21 @@
       conn.on('open', () => {
         document.getElementById('status').textContent = 'Connected to host!';
         document.getElementById('game').style.display = 'block';
+        isYourTurn = false;
+        updateTurnDisplay();
       });
       conn.on('data', handleData);
     }
 
     function playRound() {
-      if (!isYourTurn || !conn || conn.open === false) {
-        alert('Not your turn or not connected!');
+      if (!conn || conn.open === false) {
+        alert('Not connected!');
         return;
       }
       const yourCard = drawCardFromDeck();
       document.getElementById('yourCard').textContent = yourCard.value + yourCard.suit;
       conn.send({ type: 'card', card: yourCard });
       localState.yourCard = yourCard;
-      isYourTurn = false;
       updateTurnDisplay();
     }
 
@@ -154,11 +155,11 @@
       if (data.type === 'deck') {
         deck = data.deck;
         shuffleDeck();
-        isYourTurn = false;
         updateTurnDisplay();
       } else if (data.type === 'card') {
         document.getElementById('opponentCard').textContent = data.card.value + data.card.suit;
         localState.opponentCard = data.card;
+
         if (localState.yourCard) {
           evaluateRound(localState.yourCard, data.card);
           localState.yourCard = null;
@@ -166,10 +167,12 @@
           totalRounds--;
           if (totalRounds === 0) {
             endGame();
-          } else {
-            isYourTurn = true;
-            updateTurnDisplay();
           }
+          isYourTurn = true;
+          updateTurnDisplay();
+        } else {
+          isYourTurn = false;
+          updateTurnDisplay();
         }
       }
     }

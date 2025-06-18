@@ -9,7 +9,7 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background-color: #7AA;
+      background-color: #EAA;
       color: white;
     }
     .card {
@@ -162,12 +162,10 @@
         updateTurnDisplay();
       } else if (data.type === 'card') {
         const theirCard = data.card;
+        localState.opponentCard = theirCard;
+        document.getElementById('opponentCard').textContent = theirCard.value + theirCard.suit;
 
-        // If this client just sent its card
         if (localState.yourCard) {
-          localState.opponentCard = theirCard;
-          document.getElementById('opponentCard').textContent = theirCard.value + theirCard.suit;
-
           evaluateRound(localState.yourCard, localState.opponentCard);
           localState.yourCard = null;
           localState.opponentCard = null;
@@ -179,38 +177,10 @@
 
           isYourTurn = true;
         } else {
-          // This client hasn't played yet
-          localState.opponentCard = theirCard;
-          document.getElementById('opponentCard').textContent = theirCard.value + theirCard.suit;
+          isYourTurn = false;
         }
 
         updateTurnDisplay();
-      }
-    } else {
-          document.getElementById('opponentCard').textContent = data.card.value + data.card.suit;
-        }
-
-        if (localState.yourCard) {
-          evaluateRound(localState.yourCard, localState.opponentCard);
-          localState.yourCard = null;
-          localState.opponentCard = null;
-          totalRounds--;
-          if (totalRounds === 0) {
-            endGame();
-          }
-          isYourTurn = true;
-          updateTurnDisplay();
-        } else {
-          isYourTurn = false;
-          updateTurnDisplay();
-        }
-      }
-          isYourTurn = true;
-          updateTurnDisplay();
-        } else {
-          isYourTurn = false;
-          updateTurnDisplay();
-        }
       }
     }
 
